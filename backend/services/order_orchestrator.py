@@ -10,8 +10,7 @@ from backend.database.clients_config import clients_data, furnizor_data, client_
 
 PDF_DIR = tempfile.gettempdir()
 
-def force_reset(): 
-    st.session_state.reset_counter += 1
+def force_reset(): st.session_state.reset_counter += 1
 
 def reset_cart():
     st.session_state.schita_comanda = []
@@ -36,45 +35,15 @@ def calculate_delta(prod_key, cmd_pal, cmd_box):
     return ((cmd_pal * st.session_state.db[prod_key]['conversion']) + cmd_box + sum([(i['Paleti'] * st.session_state.db[prod_key]['conversion']) + i['Cutii'] for i in st.session_state.schita_comanda if i['Produs'] == prod_key])) <= get_total_boxes(prod_key)
 
 # ==========================================
-# --- MOTOR PDF ---
+# --- MOTOARE GENERARE PDF SEPARATE ---
 # ==========================================
-def generate_pdf_document(order_no, client_name, payload_fiscal, payload_log):
-    pdf = FPDF(); c_data = clients_data[client_name]; f_data = furnizor_data
+
+def generate_pdf_dispozitie(order_no, payload_log):
+    pdf = FPDF()
     data_azi = datetime.now().strftime('%d/%m/%Y')
-    
-    pdf.add_page(); pdf.set_font("Arial", 'B', 14); pdf.cell(0, 8, "AVIZ DE INSOTIRE A MARFII", align='C', ln=1)
-    pdf.set_font("Arial", '', 9); pdf.cell(0, 5, f"Seria NS nr. {order_no} | Data: {data_azi}", align='C', ln=1); pdf.ln(5)
-    
-    pdf.set_font("Arial", 'B', 9); pdf.cell(95, 5, clean_text(f"Furnizor: {f_data['Nume']}"), ln=0); pdf.set_x(110); pdf.cell(85, 5, clean_text(f"Client: {client_name}"), ln=1)
-    pdf.set_font("Arial", '', 8); pdf.cell(95, 4, f"CIF: {f_data['CIF']} | J: {f_data['RegCom']}", ln=0); pdf.set_x(110); pdf.cell(85, 4, f"CIF: {c_data['CIF']} | J: {c_data['RegCom']}", ln=1)
-    pdf.cell(95, 4, clean_text(f"Adresa: {f_data['Adresa']}"), ln=0); pdf.set_x(110); pdf.multi_cell(85, 4, clean_text(f"Adresa: {c_data['Adresa']}")); pdf.ln(5)
-    
-    pdf.set_font("Arial", 'B', 8); pdf.cell(10, 8, "Nr.", 1, 0, 'C'); pdf.cell(130, 8, "Denumirea produselor", 1, 0, 'C'); pdf.cell(20, 8, "U.M.", 1, 0, 'C'); pdf.cell(30, 8, "Cantitate", 1, 1, 'C')
-    pdf.set_font("Arial", '', 8)
-    for i, item in enumerate(payload_fiscal):
-        pdf.cell(10, 5, str(i+1), 'L,T,R', 0, 'C'); pdf.cell(130, 5, clean_text(f"({item.get('Cod_Depozit', '-')}) {item['Nomenclator Oficial'][:75]}"), 'L,T,R', 0, 'L')
-        um_split = item['Cantitate (U.M.)'].split(' ')
-        val_c = um_split[0]
-        um_c = um_split[1] if len(um_split) > 1 else ""
-        pdf.cell(20, 5, clean_text(um_c), 'L,T,R', 0, 'C'); pdf.cell(30, 5, str(float(val_c)), 'L,T,R', 1, 'C')
-        pdf.cell(10, 4, "", 'L,B,R', 0, 'C'); pdf.set_text_color(100, 100, 100); pdf.cell(130, 4, "Cod NC: 48236990", 'L,B,R', 0, 'L'); pdf.set_text_color(0, 0, 0)
-        pdf.cell(20, 4, "", 'L,B,R', 0, 'C'); pdf.cell(30, 4, "", 'L,B,R', 1, 'C')
-    for _ in range(2):
-        pdf.cell(10, 6, "", 1, 0); pdf.cell(130, 6, "", 1, 0); pdf.cell(20, 6, "", 1, 0); pdf.cell(30, 6, "", 1, 1)
-
-    pdf.set_font("Arial", 'B', 8); pdf.cell(190, 6, f"Nr. comanda achizitie: AR {order_no}/{data_azi.split('/')[2]}", 'L,T,R', 1, 'L')
-    pdf.set_font("Arial", '', 8); pdf.cell(190, 6, f"AR {order_no} (Comanda {client_name})", 'L,B,R', 1, 'L'); pdf.ln(5)
-    
-    pdf.cell(95, 5, "Semnatura si stampila furnizorului:", 'L,T,R', 0, 'L'); pdf.cell(95, 5, "Date privind expeditia:", 'L,T,R', 1, 'L')
-    pdf.cell(95, 5, "", 'L,R', 0, 'L'); pdf.cell(95, 5, "Numele delegatului: .....................................................", 'L,R', 1, 'L')
-    pdf.set_font("Arial", '', 6); pdf.cell(95, 5, "Intocmit de: NEXUS Auto-Sistem", 'L,R', 0, 'L'); pdf.set_font("Arial", '', 8)
-    pdf.cell(95, 5, "Mijloc de transport: ................................. nr: ..................", 'L,R', 1, 'L')
-    pdf.cell(95, 5, "", 'L,B,R', 0, 'L'); pdf.cell(95, 5, f"Expedierea s-a facut in prezenta noastra la data: {data_azi}", 'L,B,R', 1, 'L')
-
     pdf.add_page(); pdf.set_font("Arial", 'B', 12); pdf.cell(0, 8, "DISPOZITIE DE LIVRARE (COMANDA DEPOZIT)", align='C', ln=1)
-    pdf.set_font("Arial", '', 10); pdf.cell(0, 5, f"Nr. {order_no} / Data: {data_azi}", align='C', ln=1); pdf.ln(10)
+    pdf.set_font("Arial", '', 10); pdf.cell(0, 5, f"Cmd NEXUS: {order_no} | Data: {data_azi}", align='C', ln=1); pdf.ln(10)
     pdf.set_font("Arial", 'B', 9); pdf.cell(10, 8, "Nr", 1, 0, 'C'); pdf.cell(30, 8, "Cod Raft", 1, 0, 'C'); pdf.cell(110, 8, "Denumire / Instructiune Stivuitorist", 1, 0, 'C'); pdf.cell(20, 8, "Cant", 1, 0, 'C'); pdf.cell(20, 8, "U/M", 1, 1, 'C')
-    
     pdf.set_font("Arial", '', 9)
     for i, item in enumerate(payload_log):
         is_palet = "PAL" in item['UM'].upper()
@@ -83,11 +52,57 @@ def generate_pdf_document(order_no, client_name, payload_fiscal, payload_log):
         pdf.cell(110, 8, clean_text(item['Denumire'][:85]), 1, 0); pdf.cell(20, 8, str(item['Cant']), 1, 0, 'C')
         if is_palet: pdf.set_fill_color(220, 220, 220); pdf.cell(20, 8, item['UM'], 1, 1, 'C', fill=True)
         else: pdf.cell(20, 8, item['UM'], 1, 1, 'C')
-
-    pdf.ln(20); pdf.cell(0, 5, "Dispus livrarea ....................      Gestionar ....................      Primitor ....................", ln=1)
-    filepath = os.path.join(PDF_DIR, f"DOCUMENTE_NEXUS_{order_no}.pdf")
+    pdf.ln(15); pdf.cell(0, 5, "NEXUS B2B Auto-Generated", ln=1)
+    filepath = os.path.join(PDF_DIR, f"Dispozitie_Depozit_{order_no}.pdf")
     pdf.output(filepath)
     return filepath
+
+def generate_pdf_aviz(order_no, client_name, payload_fiscal):
+    pdf = FPDF(); c_data = clients_data[client_name]; f_data = furnizor_data
+    data_azi = datetime.now().strftime('%d/%m/%Y')
+    pdf.add_page(); pdf.set_font("Arial", 'B', 14); pdf.cell(0, 8, "AVIZ DE INSOTIRE A MARFII", align='C', ln=1)
+    pdf.set_font("Arial", '', 9); pdf.cell(0, 5, f"Seria NS nr. {order_no} | Data: {data_azi}", align='C', ln=1); pdf.ln(5)
+    pdf.set_font("Arial", 'B', 9); pdf.cell(95, 5, clean_text(f"Furnizor: {f_data['Nume']}"), ln=0); pdf.set_x(110); pdf.cell(85, 5, clean_text(f"Client: {client_name}"), ln=1)
+    pdf.set_font("Arial", '', 8); pdf.cell(95, 4, f"CIF: {f_data['CIF']} | J: {f_data['RegCom']}", ln=0); pdf.set_x(110); pdf.cell(85, 4, f"CIF: {c_data['CIF']} | J: {c_data['RegCom']}", ln=1)
+    pdf.cell(95, 4, clean_text(f"Adresa: {f_data['Adresa']}"), ln=0); pdf.set_x(110); pdf.multi_cell(85, 4, clean_text(f"Adresa: {c_data['Adresa']}")); pdf.ln(5)
+    pdf.set_font("Arial", 'B', 8); pdf.cell(10, 8, "Nr.", 1, 0, 'C'); pdf.cell(130, 8, "Denumirea produselor", 1, 0, 'C'); pdf.cell(20, 8, "U.M.", 1, 0, 'C'); pdf.cell(30, 8, "Cantitate", 1, 1, 'C')
+    pdf.set_font("Arial", '', 8)
+    for i, item in enumerate(payload_fiscal):
+        pdf.cell(10, 5, str(i+1), 'L,T,R', 0, 'C'); pdf.cell(130, 5, clean_text(f"({item.get('Cod_Depozit', '-')}) {item['Nomenclator Oficial'][:75]}"), 'L,T,R', 0, 'L')
+        um_split = item['Cantitate (U.M.)'].split(' ')
+        val_c = um_split[0]; um_c = um_split[1] if len(um_split) > 1 else ""
+        pdf.cell(20, 5, clean_text(um_c), 'L,T,R', 0, 'C'); pdf.cell(30, 5, str(float(val_c)), 'L,T,R', 1, 'C')
+        pdf.cell(10, 4, "", 'L,B,R', 0, 'C'); pdf.set_text_color(100, 100, 100); pdf.cell(130, 4, "Cod NC: 48236990", 'L,B,R', 0, 'L'); pdf.set_text_color(0, 0, 0)
+        pdf.cell(20, 4, "", 'L,B,R', 0, 'C'); pdf.cell(30, 4, "", 'L,B,R', 1, 'C')
+    for _ in range(2):
+        pdf.cell(10, 6, "", 1, 0); pdf.cell(130, 6, "", 1, 0); pdf.cell(20, 6, "", 1, 0); pdf.cell(30, 6, "", 1, 1)
+    pdf.set_font("Arial", 'B', 8); pdf.cell(190, 6, f"Nr. comanda achizitie: AR {order_no}/{data_azi.split('/')[2]}", 'L,T,R', 1, 'L')
+    pdf.set_font("Arial", '', 8); pdf.cell(190, 6, f"AR {order_no} (Comanda {client_name})", 'L,B,R', 1, 'L'); pdf.ln(5)
+    pdf.cell(95, 5, "Semnatura si stampila furnizorului:", 'L,T,R', 0, 'L'); pdf.cell(95, 5, "Date privind expeditia:", 'L,T,R', 1, 'L')
+    pdf.cell(95, 5, "", 'L,R', 0, 'L'); pdf.cell(95, 5, "Nume delegat / Transportator:", 'L,R', 1, 'L')
+    pdf.cell(95, 5, "NOVA SAFE SRL", 'L,B,R', 0, 'L'); pdf.cell(95, 5, f"Data expedierii: {data_azi}", 'L,B,R', 1, 'L')
+    filepath = os.path.join(PDF_DIR, f"Aviz_{order_no}.pdf")
+    pdf.output(filepath)
+    return filepath
+
+def generate_pdf_certificat(order_no, client_name, payload_fiscal):
+    pdf = FPDF(); c_data = clients_data[client_name]; f_data = furnizor_data
+    data_azi = datetime.now().strftime('%d/%m/%Y')
+    pdf.add_page(); pdf.set_font("Arial", 'B', 14); pdf.cell(0, 8, "CERTIFICAT DE CONFORMITATE SI CALITATE", align='C', ln=1)
+    pdf.set_font("Arial", '', 9); pdf.cell(0, 5, f"Pentru Aviz NS nr. {order_no} | Data: {data_azi}", align='C', ln=1); pdf.ln(10)
+    pdf.set_font("Arial", '', 10)
+    pdf.multi_cell(0, 6, clean_text(f"Subscrisa {f_data['Nume']}, declaram pe propria raspundere ca produsele livrate catre {client_name}, mentionate mai jos, respecta standardele de calitate si siguranta in vigoare."))
+    pdf.ln(5)
+    pdf.set_font("Arial", 'B', 9); pdf.cell(20, 8, "Nr.", 1, 0, 'C'); pdf.cell(140, 8, "Produs Livrat", 1, 0, 'C'); pdf.cell(30, 8, "Cantitate", 1, 1, 'C')
+    pdf.set_font("Arial", '', 9)
+    for i, item in enumerate(payload_fiscal):
+        pdf.cell(20, 6, str(i+1), 1, 0, 'C'); pdf.cell(140, 6, clean_text(f"{item['Nomenclator Oficial'][:80]}"), 1, 0, 'L'); pdf.cell(30, 6, clean_text(item['Cantitate (U.M.)']), 1, 1, 'C')
+    pdf.ln(15)
+    pdf.set_font("Arial", 'B', 10); pdf.cell(0, 6, "Reprezentant Calitate NOVA SAFE SRL,", ln=1)
+    filepath = os.path.join(PDF_DIR, f"Certificat_Conf_{order_no}.pdf")
+    pdf.output(filepath)
+    return filepath
+
 
 # ==========================================
 # --- FUNCTIA PRINCIPALA A MODULULUI ---
@@ -107,9 +122,9 @@ def render_lansare_module():
     tab1, tab2, tab3 = st.tabs(["🛒 Formare Comandă", "🚚 Gestiune Rampă & Acte", "📜 Istoric & Arhivă"])
     
     with tab1:
-        comenzi_asteapta_acte = [c for c in st.session_state.istoric_comenzi_live if c['Status'] == "Incarcat"]
+        comenzi_asteapta_acte = [c for c in st.session_state.istoric_comenzi_live if c['Status'] in ["Incarcat", "Draft Acte"]]
         if len(comenzi_asteapta_acte) > 0:
-            st.error(f"🚨 ACȚIUNE NECESARĂ: {len(comenzi_asteapta_acte)} comandă(i) au fost încărcate! Treci la Rampă pentru a emite PDF-urile.")
+            st.error(f"🚨 ACȚIUNE NECESARĂ: {len(comenzi_asteapta_acte)} comandă(i) au marfa încărcată! Treci la Rampă pentru Validare și SEND.")
         
         if st.session_state.last_success_msg:
             st.success(st.session_state.last_success_msg)
@@ -186,7 +201,7 @@ def render_lansare_module():
                         st.session_state.client_temporar_comandat = client_ales
                         st.session_state.mod_previzualizare = True; st.rerun()
 
-        # ECRAN B: PREVIZUALIZARE
+        # ECRAN B: PREVIZUALIZARE & SCINDARE CORECTĂ
         else:
             client_ales_prev = st.session_state.client_temporar_comandat
             st.markdown("### 🔍 Previzualizare & Lansare")
@@ -243,10 +258,15 @@ def render_lansare_module():
                     p = item['Produs']; P = st.session_state.db[p]['conversion']; C = item['Cutii']; pal = item['Paleti']
                     s_ramas = get_total_boxes(p) - ((pal * P) + C)
                     st.session_state.db[p]['stock_pal'] = s_ramas // P; st.session_state.db[p]['stock_box'] = s_ramas % P
+                
+                # GENERAM DOAR DISPOZITIA DE DEPOZIT AICI!
+                pdf_disp = generate_pdf_dispozitie(st.session_state.order_number, payload_log)
+
                 st.session_state.istoric_comenzi_live.append({
                     "Comanda": st.session_state.order_number, "Client": client_ales_prev,
                     "Schita_Originala": st.session_state.schita_comanda.copy(),
-                    "Payload_Logistic": payload_log, "Payload_Fiscal": payload_fisc, "Status": "Asteapta Incarcare"
+                    "Payload_Logistic": payload_log, "Payload_Fiscal": payload_fisc, 
+                    "Status": "Asteapta Incarcare", "pdf_dispozitie": pdf_disp
                 })
                 st.session_state.order_number += 1
                 st.session_state.schita_comanda = []
@@ -255,39 +275,45 @@ def render_lansare_module():
             with c_b2:
                 if st.button("🚀 Lansează și rămâi AICI", use_container_width=True):
                     executa_lansare()
-                    st.session_state.last_success_msg = f"✅ Comanda NS-{st.session_state.order_number - 1} a fost trimisă la Rampă! Poți adăuga una nouă."
+                    st.session_state.last_success_msg = f"✅ Comanda NS-{st.session_state.order_number - 1} a fost trimisă la Depozit. Poți adăuga una nouă."
                     st.rerun()
             with c_b3:
                 if st.button("🚚 Lansează și mergi la RAMPĂ", type="primary", use_container_width=True):
                     executa_lansare()
-                    st.session_state.last_success_msg = f"✅ Comanda NS-{st.session_state.order_number - 1} e la Rampă! (Dă click pe Tab-ul 'Gestiune Rampă & Acte')"
+                    st.session_state.last_success_msg = f"✅ Comanda NS-{st.session_state.order_number - 1} e la Depozit! (Vezi Tab-ul 'Gestiune Rampă')"
                     st.rerun()
+
+    # ==========================================
+    # --- TAB 2: GESTIUNE RAMPĂ & ACTE ---
+    # ==========================================
     with tab2:
-        st.markdown("### 🚚 Gestiune Rampă (Istoric Zilei)")
+        st.markdown("### 🚚 Gestiune Rampă (Validare și SEND)")
         if len(st.session_state.istoric_comenzi_live) == 0: st.info("Nicio comandă la rampă.")
         
         for idx, cmd in enumerate(reversed(st.session_state.istoric_comenzi_live)):
             real_idx = len(st.session_state.istoric_comenzi_live) - 1 - idx 
             
-            # Culori pentru noul flux
             if cmd['Status'] == "Asteapta Incarcare": status_color = "🔴"
             elif cmd['Status'] == "Incarcat": status_color = "🟡"
-            elif cmd['Status'] == "Documente Generate": status_color = "🔵"
+            elif cmd['Status'] == "Draft Acte": status_color = "🔵"
             else: status_color = "🟢"
 
             st.markdown(f"#### {status_color} Cmd NEXUS-{cmd['Comanda']} | {cmd['Client']} | Status: {cmd['Status']}")
             
-            with st.expander("👁️ Vezi Marfa (WMS)"):
+            with st.expander("👁️ Vezi Comanda către Depozit (Ce scot ei fizic)"):
                 st.dataframe(pd.DataFrame(cmd['Payload_Logistic']), hide_index=True)
+                if 'pdf_dispozitie' in cmd and os.path.exists(cmd['pdf_dispozitie']):
+                    with open(cmd['pdf_dispozitie'], "rb") as file:
+                        st.download_button("📥 Descarcă Dispoziția Depozit", data=file, file_name=f"Dispozitie_{cmd['Comanda']}.pdf", mime="application/pdf", key=f"disp_dl_{real_idx}")
                 
-            # PASUL 1: Asteapta Incarcarea fizica
+            # PASUL 1: Incarcare Fizica
             if cmd['Status'] == "Asteapta Incarcare":
                 col_a, col_b = st.columns(2)
                 with col_a: 
-                    if st.button("✅ Stivuitorist: Confirmă Încărcare", key=f"inc_{real_idx}", type="primary"): 
+                    if st.button("✅ Confirmă Încărcarea Mărfii", key=f"inc_{real_idx}", type="primary"): 
                         st.session_state.istoric_comenzi_live[real_idx]['Status'] = "Incarcat"; st.rerun()
                 with col_b:
-                    if st.button("🔙 Întoarce în Coș (Modifică)", key=f"ret_{real_idx}"):
+                    if st.button("🔙 Anulează (Marfa se întoarce în Stoc)", key=f"ret_{real_idx}"):
                         if len(st.session_state.schita_comanda) > 0:
                             st.error("Golește coșul curent din Tab-ul 1 înainte de a aduce o comandă de la Rampă!")
                         else:
@@ -303,33 +329,40 @@ def render_lansare_module():
                             st.session_state.schita_comanda = cmd['Schita_Originala'].copy()
                             st.session_state.client_temporar_comandat = cmd['Client']
                             st.session_state.istoric_comenzi_live.pop(real_idx)
-                            st.session_state.last_success_msg = "⚠️ Comanda a fost adusă înapoi de la rampă. Marfa a revenit în stoc. Modifică cantitățile în Tab-ul 1."
+                            st.session_state.last_success_msg = "⚠️ Comanda a fost anulată. Marfa a revenit în stoc. Modifică cantitățile în Tab-ul 1."
                             st.rerun()
                         
-            # PASUL 2: Dupa Incarcare -> Emite Actele Fizice (PDF)
+            # PASUL 2: Generare Draft Acte Legale
             elif cmd['Status'] == "Incarcat":
-                st.info("Marfa a fost confirmată. Șoferul așteaptă documentele de transport (Avizul).")
-                if st.button("🖨️ EMITE ACTE PDF", type="primary", key=f"emit_{real_idx}"):
-                    pdf_p = generate_pdf_document(cmd['Comanda'], cmd['Client'], cmd['Payload_Fiscal'], cmd['Payload_Logistic'])
-                    st.session_state.istoric_comenzi_live[real_idx]['Status'] = "Documente Generate"
-                    st.session_state.istoric_comenzi_live[real_idx]['pdf_path'] = pdf_p
+                st.info("Marfa a fost confirmată fizic. Generăm documentele de ieșire legale.")
+                if st.button("📝 Generează Draft Acte (Aviz & Certificat)", type="primary", key=f"draft_{real_idx}"):
+                    pdf_a = generate_pdf_aviz(cmd['Comanda'], cmd['Client'], cmd['Payload_Fiscal'])
+                    pdf_c = generate_pdf_certificat(cmd['Comanda'], cmd['Client'], cmd['Payload_Fiscal'])
+                    st.session_state.istoric_comenzi_live[real_idx]['Status'] = "Draft Acte"
+                    st.session_state.istoric_comenzi_live[real_idx]['pdf_aviz'] = pdf_a
+                    st.session_state.istoric_comenzi_live[real_idx]['pdf_certificat'] = pdf_c
                     st.rerun()
                     
-            # PASUL 3: Actele au fost emise -> Acum poti trimite spre facturare in SmartBill
-            elif cmd['Status'] == "Documente Generate":
+            # PASUL 3: Validare si SEND
+            elif cmd['Status'] == "Draft Acte":
+                st.markdown("##### 📄 Documente Pregătite (Verificare Ochiometrică):")
                 c_d1, c_d2 = st.columns(2)
                 with c_d1:
-                    with open(cmd['pdf_path'], "rb") as file: 
-                        st.download_button("📥 Descarcă Aviz PDF", data=file, file_name=f"Aviz_{cmd['Comanda']}.pdf", mime="application/pdf", key=f"dl_{real_idx}")
+                    with open(cmd['pdf_aviz'], "rb") as file: 
+                        st.download_button("📄 Vizualizare Aviz", data=file, file_name=f"Aviz_{cmd['Comanda']}.pdf", mime="application/pdf", key=f"dl_a_{real_idx}")
                 with c_d2:
-                    st.warning("⚠️ Actele s-au emis, dar comanda NU este încă facturată fiscal.")
-                    if st.button("🚀 TRIMITE LA SMARTBILL (e-Factura)", type="primary", key=f"sb_{real_idx}", use_container_width=True):
-                        st.session_state.istoric_comenzi_live[real_idx]['Status'] = "Trimis SmartBill"
-                        st.rerun()
+                    with open(cmd['pdf_certificat'], "rb") as file: 
+                        st.download_button("🏅 Vizualizare Certificat Conf.", data=file, file_name=f"Certificat_{cmd['Comanda']}.pdf", mime="application/pdf", key=f"dl_c_{real_idx}")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.warning("⚠️ Odată apăsat SEND, Avizul pleacă la SmartBill și actele către Depozit/Arhivă.")
+                if st.button("🚀 SEND (Aprobă & Distribuie)", type="primary", key=f"send_{real_idx}", use_container_width=True):
+                    st.session_state.istoric_comenzi_live[real_idx]['Status'] = "Trimis Finalizat"
+                    st.rerun()
 
-            # PASUL 4: Finalizat
-            elif cmd['Status'] == "Trimis SmartBill":
-                st.success("✅ Acte emise & Date trimise la SmartBill cu succes. Flux închis.")
+            # PASUL 4: GATA
+            elif cmd['Status'] == "Trimis Finalizat":
+                st.success("✅ Acte emise fizic (Depozit) & Date trimise la SmartBill (e-Factura) cu succes.")
                 
             st.divider()
 
@@ -347,7 +380,7 @@ def render_lansare_module():
                 istoric_df.append({
                     "Comandă": f"NEXUS-{c['Comanda']}",
                     "Client": c['Client'],
-                    "Status": "✅ Gata" if c['Status'] == "Trimis SmartBill" else c['Status'],
+                    "Status": "✅ Gata" if c['Status'] == "Trimis Finalizat" else c['Status'],
                     "Articole": len(c['Schita_Originala'])
                 })
             
@@ -356,18 +389,23 @@ def render_lansare_module():
             st.divider()
             st.markdown("#### 📥 Re-Descărcare Documente (Arhivă PDF)")
             
-            # Aici afisam documentele doar dupa ce au fost generate (chiar daca nu-s inca in SmartBill)
-            comenzi_cu_acte = [c for c in reversed(st.session_state.istoric_comenzi_live) if c['Status'] in ["Documente Generate", "Trimis SmartBill"]]
+            comenzi_cu_acte = [c for c in reversed(st.session_state.istoric_comenzi_live) if c['Status'] in ["Draft Acte", "Trimis Finalizat"]]
             
             if len(comenzi_cu_acte) == 0:
                 st.warning("Nu există documente PDF generate încă în sesiune.")
             else:
                 for cmd in comenzi_cu_acte:
                     with st.expander(f"📦 Cmd: NEXUS-{cmd['Comanda']} | {cmd['Client']}"):
-                        st.markdown("**Produse Facturate (Spre SmartBill):**")
-                        st.dataframe(pd.DataFrame(cmd['Payload_Fiscal'])[['Nomenclator Oficial', 'Cantitate (U.M.)']], hide_index=True)
+                        col_doc1, col_doc2, col_doc3 = st.columns(3)
                         
-                        if 'pdf_path' in cmd and os.path.exists(cmd['pdf_path']):
-                            with open(cmd['pdf_path'], "rb") as file:
-                                st.download_button("📥 Descarcă Avizul PDF (Copie)", data=file, file_name=f"Aviz_COPIE_{cmd['Comanda']}.pdf", mime="application/pdf", key=f"arh_dl_{cmd['Comanda']}")
-    
+                        if 'pdf_dispozitie' in cmd and os.path.exists(cmd['pdf_dispozitie']):
+                            with open(cmd['pdf_dispozitie'], "rb") as file:
+                                col_doc1.download_button("📥 Disp. Depozit", data=file, file_name=f"Dispozitie_{cmd['Comanda']}.pdf", key=f"arh_d_{cmd['Comanda']}")
+                                
+                        if 'pdf_aviz' in cmd and os.path.exists(cmd['pdf_aviz']):
+                            with open(cmd['pdf_aviz'], "rb") as file:
+                                col_doc2.download_button("📥 Aviz", data=file, file_name=f"Aviz_{cmd['Comanda']}.pdf", key=f"arh_a_{cmd['Comanda']}")
+                                
+                        if 'pdf_certificat' in cmd and os.path.exists(cmd['pdf_certificat']):
+                            with open(cmd['pdf_certificat'], "rb") as file:
+                                col_doc3.download_button("📥 Certificat Conf.", data=file, file_name=f"Certificat_{cmd['Comanda']}.pdf", key=f"arh_c_{cmd['Comanda']}")
