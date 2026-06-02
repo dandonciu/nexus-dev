@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 from zoneinfo import ZoneInfo
 import os
 import base64
@@ -19,7 +19,7 @@ def reset_cart():
     force_reset()
 
 def clean_text(txt):
-    replacements = {'ă':'a', 'â':'a', 'î':'i', 'ș':'s', 'ț':'t', 'Ă':'A', 'Â':'A', 'Î':'I', 'Ș':'S', 'Ț':'T'}
+    replacements = {'ă':'a', 'â':'a', 'î':'i', 'ș':'s', 'ț':'t', 'Ă':'A', 'Â':'A', 'Î':'I', 'Ș':'S', 'Ț':'T', '↳':'->', '🍺':''}
     for k, v in replacements.items(): txt = str(txt).replace(k, v)
     return txt
 
@@ -27,7 +27,6 @@ def get_total_boxes(prod_key):
     return (st.session_state.db[prod_key]['stock_pal'] * st.session_state.db[prod_key]['conversion']) + st.session_state.db[prod_key]['stock_box']
 
 def get_available_stock_ui(prod_key):
-    # Arata stocul scazut cu ce e in cos!
     total_fizic = get_total_boxes(prod_key)
     in_cart = sum([(i.get('Paleti', 0) * st.session_state.db[prod_key]['conversion']) + i.get('Cutii', 0) for i in st.session_state.schita_comanda if i.get('Produs') == prod_key])
     rem = total_fizic - in_cart
@@ -105,7 +104,6 @@ def render_lansare_module():
     with col_titlu: st.title("📦 NEXUS Lansare Comenzi")
     with col_cmd: st.info(f"**Nr. Cmd:** {st.session_state.order_number}\n\n**Data:** {datetime.now().strftime('%d.%m.%Y')}")
 
-    # --- AM ADAUGAT TAB-UL 3 AICI ---
     tab1, tab2, tab3 = st.tabs(["🛒 Formare Comandă", "🚚 Gestiune Rampă & Acte", "📜 Istoric & Arhivă"])
     
     with tab1:
@@ -188,7 +186,7 @@ def render_lansare_module():
                         st.session_state.client_temporar_comandat = client_ales
                         st.session_state.mod_previzualizare = True; st.rerun()
 
-        # ECRAN B: PREVIZUALIZARE & SCINDARE CORECTĂ
+        # ECRAN B: PREVIZUALIZARE
         else:
             client_ales_prev = st.session_state.client_temporar_comandat
             st.markdown("### 🔍 Previzualizare & Lansare")
@@ -215,18 +213,18 @@ def render_lansare_module():
                         txt_liber = f"cutii cod {item['Cod_Depozit_Box']} - {C} cutii"
                         payload_fisc.append({"Cod_Depozit": item['Cod_Depozit_Box'], "Nomenclator Oficial": txt_liber, "Cantitate (U.M.)": f"{C * conv} {um}"})
                         payload_log.append({"Cod Gestiune": item['Cod_Depozit_Box'], "Denumire": nf, "Cant": str(C), "UM": "Cutii"})
-                        payload_log.append({"Cod Gestiune": "↳", "Denumire": "🍺 Sfat: Iei din stocul liber de pe raft", "Cant": "-", "UM": "-"})
+                        payload_log.append({"Cod Gestiune": "->", "Denumire": "Sfat: Iei din stocul liber de pe raft", "Cant": "-", "UM": "-"})
                     else:
                         if L > 0: 
                             txt_liber_2 = f"cutii cod {item['Cod_Depozit_Box']} - {L} cutii"
                             payload_fisc.append({"Cod_Depozit": item['Cod_Depozit_Box'], "Nomenclator Oficial": txt_liber_2, "Cantitate (U.M.)": f"{L * conv} {um}"})
                             payload_log.append({"Cod Gestiune": item['Cod_Depozit_Box'], "Denumire": nf, "Cant": str(L), "UM": "Cutii"})
-                            payload_log.append({"Cod Gestiune": "↳", "Denumire": f"🍺 Sfat: Iei {L} cutii ramase libere", "Cant": "-", "UM": "-"})
+                            payload_log.append({"Cod Gestiune": "->", "Denumire": f"Sfat: Iei {L} cutii ramase libere", "Cant": "-", "UM": "-"})
                         
                         txt_spart = f"cutii cod {item['Cod_Depozit_Pal']} - {C - L} cutii"
                         payload_fisc.append({"Cod_Depozit": item['Cod_Depozit_Pal'], "Nomenclator Oficial": txt_spart, "Cantitate (U.M.)": f"{(C - L) * conv} {um}"})
                         payload_log.append({"Cod Gestiune": item['Cod_Depozit_Pal'], "Denumire": f"{nf} (Spart din palet)", "Cant": str(C - L), "UM": "Cutii"})
-                        payload_log.append({"Cod Gestiune": "↳", "Denumire": "🍺 Sfat: Desfaci 1 Palet Nou pentru restul", "Cant": "-", "UM": "-"})
+                        payload_log.append({"Cod Gestiune": "->", "Denumire": "Sfat: Desfaci 1 Palet Nou pentru restul", "Cant": "-", "UM": "-"})
 
                 if pal > 0: 
                     payload_log.insert(0, {"Cod Gestiune": item['Cod_Depozit_Pal'], "Denumire": f"{nf} (Sigilat)", "Cant": str(pal), "UM": "PAL"})
@@ -324,7 +322,6 @@ def render_lansare_module():
         if len(st.session_state.istoric_comenzi_live) == 0:
             st.info("Nicio comandă procesată astăzi.")
         else:
-            # Creare tabel sumar
             istoric_df = []
             for c in reversed(st.session_state.istoric_comenzi_live):
                 istoric_df.append({
