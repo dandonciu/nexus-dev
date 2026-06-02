@@ -6,9 +6,9 @@ import math
 def force_inject_mock_data():
     st.session_state.db = {
         "Role Autocut Albe TAD 220m": {
-            "cod_master": "MST-BKTp721", "oracle_pal": "PAL BKTp721", "oracle_box": "BKTp721",
+            "cod_master": "MST-BKTp721", "cod_nir": "NIR-4451", "oracle_pal": "PAL BKTp721", "oracle_box": "BKTp721",
             "stock_pal": 3, "stock_box": 0, "conversion": 64, 
-            "conversie_baza": 6, "um_baza": "role",  # <-- AICI ERA EROAREA (le ștersesem din greșeală)
+            "conversie_baza": 6, "um_baza": "role", 
             "descriere": "Role din celuloză pură 100%, 2 straturi.",
             "livrari_totale": pd.DataFrame({
                 "Client": [
@@ -28,9 +28,9 @@ def force_inject_mock_data():
             })
         },
         "Lavete Craft Puromore Blue": {
-            "cod_master": "MST-70117", "oracle_pal": "PAL 70117", "oracle_box": "70117",
+            "cod_master": "MST-70117", "cod_nir": "NIR-8820", "oracle_pal": "PAL 70117", "oracle_box": "70117",
             "stock_pal": 1, "stock_box": 10, "conversion": 120,
-            "conversie_baza": 500, "um_baza": "portii", # <-- AICI ERA EROAREA 
+            "conversie_baza": 500, "um_baza": "portii", 
             "descriere": "Lavete industriale rezistente la solvenți, culoare albastră.",
             "livrari_totale": pd.DataFrame({
                 "Client": [
@@ -101,16 +101,16 @@ def render_manager_dashboard():
         with col_m2: analiza_produs = st.selectbox("Selectează Produs pt. Analiză:", list(st.session_state.db.keys()), key="mgr_prod_an")
         
         st.divider()
-        # REVENIT LA VARIANTA BUNĂ: Toate datele produsului pt graficele 1 și 2
-        df_toate = st.session_state.db[analiza_produs]["livrari_totale"]
+        df_total_produs = st.session_state.db[analiza_produs]["livrari_totale"]
+        
         color_discrete_map = {'Achitat': '#28a745', 'În termen': '#17a2b8', 'Restanță': '#dc3545'}
         
-        df_toate['Data_Obj'] = pd.to_datetime(df_toate['Data'], format='%d-%m-%Y')
-        df_toate['Luna'] = df_toate['Data_Obj'].dt.strftime('%b %Y')
+        df_total_produs['Data_Obj'] = pd.to_datetime(df_total_produs['Data'], format='%d-%m-%Y')
+        df_total_produs['Luna'] = df_total_produs['Data_Obj'].dt.strftime('%b %Y')
         
         # 1. GRAFIC LUNI (GLOBAL PE PRODUS)
         st.markdown(f"#### 📆 Volum Livrări pe Luni: **{analiza_produs}** (Toți Clienții)")
-        df_luni = df_toate.groupby(['Luna', 'Status_Plata'])['Volum_Paleti'].sum().reset_index()
+        df_luni = df_total_produs.groupby(['Luna', 'Status_Plata'])['Volum_Paleti'].sum().reset_index()
         
         fig_luni = px.bar(
             df_luni, x='Luna', y='Volum_Paleti', color='Status_Plata',
@@ -126,7 +126,7 @@ def render_manager_dashboard():
 
         # 2. GRAFIC TOP CLIENȚI (GLOBAL PE PRODUS)
         st.markdown(f"#### 🏆 Top Clienți după Volum: **{analiza_produs}**")
-        df_top = df_toate.groupby(['Client'])['Volum_Paleti'].sum().reset_index()
+        df_top = df_total_produs.groupby(['Client'])['Volum_Paleti'].sum().reset_index()
         df_top = df_top.sort_values(by='Volum_Paleti', ascending=False)
         
         fig_top = px.bar(
@@ -142,8 +142,8 @@ def render_manager_dashboard():
         st.divider()
 
         # 3. GRAFIC ISTORIC (DOAR CLIENTUL SELECTAT)
+        df_filtrat = df_total_produs[df_total_produs['Client'] == analiza_client]
         st.markdown(f"#### 🔎 Istoric Detaliat pentru: **{analiza_client}**")
-        df_filtrat = df_toate[df_toate['Client'] == analiza_client]
         
         if df_filtrat.empty:
             st.warning(f"Nu există date de livrare pentru {analiza_produs} către {analiza_client}.")
