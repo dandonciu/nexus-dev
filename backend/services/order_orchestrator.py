@@ -345,6 +345,8 @@ def render_lansare_module():
                     
             # PASUL 3: Validare si SEND
             elif cmd['Status'] == "Draft Acte":
+                data_azi_text = datetime.now().strftime('%d.%m.%Y')
+                
                 st.markdown("##### 📄 Documente Pregătite (Verificare Ochiometrică):")
                 c_d1, c_d2 = st.columns(2)
                 with c_d1:
@@ -355,8 +357,12 @@ def render_lansare_module():
                         st.download_button("🏅 Vizualizare Certificat Conf.", data=file, file_name=f"Certificat_{cmd['Comanda']}.pdf", mime="application/pdf", key=f"dl_c_{real_idx}")
                 
                 st.markdown("<br>", unsafe_allow_html=True)
-                st.warning("⚠️ Odată apăsat SEND, Avizul pleacă la SmartBill și actele către Depozit/Arhivă.")
-                if st.button("🚀 SEND (Aprobă & Distribuie)", type="primary", key=f"send_{real_idx}", use_container_width=True):
+                
+                # TEXtele NOI cerute de tine
+                st.info(f"📤 **Avizul de Expediție nr. {cmd['Comanda']} / din {data_azi_text}** și **Certificatul de Conformitate nr. {cmd['Comanda']} / din {data_azi_text}** au fost trimise la DEPOZIT.")
+                st.warning(f"⚠️ **Trimite Aviz Expediție nr. {cmd['Comanda']} / din {data_azi_text} la SmartBill după vizualizare.**")
+                
+                if st.button("🚀 SEND (Aprobă & Trimite la SmartBill)", type="primary", key=f"send_{real_idx}", use_container_width=True):
                     st.session_state.istoric_comenzi_live[real_idx]['Status'] = "Trimis Finalizat"
                     st.rerun()
 
