@@ -4,7 +4,7 @@ import pandas as pd
 def render_email_parser_module():
     st.title("📨 NEXUS Inbox")
     st.info("🤖 Botul NEXUS monitorizează adresa de email (ex: comenzi@novasafe.ro) pentru a prelua și decoda fișierele cu comenzi - Excel sau PDF - de la clienți.")
-    st.info("🤖 Botul NEXUS trimite mesaje de confirmare preluare/livrare comenzi.")
+    st.info("🤖 Botul NEXUS trimite către clienți mesaje de confirmare preluare/livrare comenzi.")
     st.info("🤖 Botul NEXUS monitorizează adresa de email (ex: nova_facturi@novasafe.ro) pentru a prelua și decoda fișierele cu facturi - Excel sau PDF - de la Furnizori și a le trimite în format normalizat către SmartBill.")
     st.info("📨 Documentele se trimit spre arhivare în Vault.")
     
