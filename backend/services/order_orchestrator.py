@@ -27,8 +27,16 @@ def get_total_boxes(prod_key):
     return (st.session_state.db[prod_key]['stock_pal'] * st.session_state.db[prod_key]['conversion']) + st.session_state.db[prod_key]['stock_box']
 
 def get_available_stock_ui(prod_key):
-    # Acum arată mereu stocul real din Depozit, fără să mai ascundă ce e în coș (elimină confuzia la retur)
-    rem = get_total_boxes(prod_key)
+    # Luăm stocul fizic real din bază
+    total_fizic = get_total_boxes(prod_key)
+    
+    # Calculăm câte cutii sunt DEJA în coș (Schiță) pentru acest produs
+    in_cart = sum([(i.get('Paleti', 0) * st.session_state.db[prod_key]['conversion']) + i.get('Cutii', 0) for i in st.session_state.schita_comanda if i.get('Produs') == prod_key])
+    
+    # Stocul DISPONIBIL PE ECRAN = Fizic - Ce e în coș
+    rem = total_fizic - in_cart
+    
+    # Returnăm formatat în Paleți și Cutii
     return rem // st.session_state.db[prod_key]['conversion'], rem % st.session_state.db[prod_key]['conversion']
 
 def calculate_delta(prod_key, cmd_pal, cmd_box):
