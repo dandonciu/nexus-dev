@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import os
 import base64
 import tempfile
@@ -26,10 +27,12 @@ def get_total_boxes(prod_key):
     return (st.session_state.db[prod_key]['stock_pal'] * st.session_state.db[prod_key]['conversion']) + st.session_state.db[prod_key]['stock_box']
 
 def get_available_stock_ui(prod_key):
-    rem = get_total_boxes(prod_key) - sum([(i.get('Paleti', 0) * st.session_state.db[prod_key]['conversion']) + i.get('Cutii', 0) for i in st.session_state.schita_comanda if i.get('Produs') == prod_key])
+    # Acum arată mereu stocul real din Depozit, fără să mai ascundă ce e în coș (elimină confuzia la retur)
+    rem = get_total_boxes(prod_key)
     return rem // st.session_state.db[prod_key]['conversion'], rem % st.session_state.db[prod_key]['conversion']
 
 def calculate_delta(prod_key, cmd_pal, cmd_box):
+    # Protecția matematică rămâne activă: nu te lasă să bagi în listă mai mult decât ai fizic total
     return ((cmd_pal * st.session_state.db[prod_key]['conversion']) + cmd_box + sum([(i['Paleti'] * st.session_state.db[prod_key]['conversion']) + i['Cutii'] for i in st.session_state.schita_comanda if i['Produs'] == prod_key])) <= get_total_boxes(prod_key)
 
 # ==========================================
@@ -50,7 +53,11 @@ def generate_pdf_document(order_no, client_name, payload_fiscal, payload_log):
     pdf.set_font("Arial", '', 8)
     for i, item in enumerate(payload_fiscal):
         pdf.cell(10, 5, str(i+1), 'L,T,R', 0, 'C'); pdf.cell(130, 5, clean_text(f"({item.get('Cod_Depozit', '-')}) {item['Nomenclator Oficial'][:75]}"), 'L,T,R', 0, 'L')
-        pdf.cell(20, 5, clean_text(item['Cantitate (U.M.)'].split(' ')[1]), 'L,T,R', 0, 'C'); pdf.cell(30, 5, str(float(item['Cantitate (U.M.)'].split(' ')[0])), 'L,T,R', 1, 'C')
+        # Reparare afișare UM dacă e lipit
+        um_split = item['Cantitate (U.M.)'].split(' ')
+        val_c = um_split[0]
+        um_c = um_split[1] if len(um_split) > 1 else ""
+        pdf.cell(20, 5, clean_text(um_c), 'L,T,R', 0, 'C'); pdf.cell(30, 5, str(float(val_c)), 'L,T,R', 1, 'C')
         pdf.cell(10, 4, "", 'L,B,R', 0, 'C'); pdf.set_text_color(100, 100, 100); pdf.cell(130, 4, "Cod NC: 48236990", 'L,B,R', 0, 'L'); pdf.set_text_color(0, 0, 0)
         pdf.cell(20, 4, "", 'L,B,R', 0, 'C'); pdf.cell(30, 4, "", 'L,B,R', 1, 'C')
     for _ in range(2):
@@ -146,7 +153,7 @@ def render_lansare_module():
             
             col_s1, col_s2, col_s3, col_s4 = st.columns(4)
             col_s1.metric("📦 Stoc PALEȚI", av_pal); col_s2.metric("📦 Stoc CUTII", av_box)
-            col_s3.metric("🔄 WMS", f"{p_data['conversion']} cut/pal"); col_s4.metric("⚖️ Fiscal", f"{p_data['conversie_baza']} {p_data['um_baza']}/cut")
+            col_s3.metric("🔄 WMS", f"{p_data['conversion']} cut/pal"); col_s4.metric("⚖️ Fiscal", f"{p_data.get('conversie_baza','-')} {p_data.get('um_baza','-')}/cut")
             
             col_q1, col_q2, _ = st.columns([1, 1, 2])
             with col_q1: order_pal = st.number_input("Nr. PALEȚI:", min_value=0, step=1, key=f'input_pal_{st.session_state.reset_counter}')
@@ -157,7 +164,7 @@ def render_lansare_module():
                 if order_pal == 0 and order_box == 0: st.warning("Introduceți o cantitate.")
                 elif not calculate_delta(prod_name, order_pal, order_box): st.error("❌ STOC INSUFICIENT!")
                 else:
-                    st.session_state.schita_comanda.append({"Produs": prod_name, "Cod_NIR": p_data['cod_nir'], "Alias_Folosit": alias_folosit, "Paleti": order_pal, "Cutii": order_box, "Cod_Depozit_Pal": p_data['oracle_pal'], "Cod_Depozit_Box": p_data['oracle_box'], "UM_Baza": p_data['um_baza'], "Conversie_Baza": p_data['conversie_baza']})
+                    st.session_state.schita_comanda.append({"Produs": prod_name, "Cod_NIR": p_data.get('cod_nir','-'), "Alias_Folosit": alias_folosit, "Paleti": order_pal, "Cutii": order_box, "Cod_Depozit_Pal": p_data['oracle_pal'], "Cod_Depozit_Box": p_data['oracle_box'], "UM_Baza": p_data.get('um_baza','-'), "Conversie_Baza": p_data.get('conversie_baza', 1)})
                     force_reset(); st.rerun()
 
             st.divider()
@@ -190,7 +197,7 @@ def render_lansare_module():
             for item in st.session_state.schita_comanda:
                 nf = item['Produs']
                 P = st.session_state.db[nf]['conversion']
-                L = st.session_state.db[nf]['stock_box'] # Cate cutii libere avem pe raft
+                L = st.session_state.db[nf]['stock_box'] # Cutii libere pe raft
                 conv = item['Conversie_Baza']
                 um = item['UM_Baza']
                 
@@ -198,25 +205,26 @@ def render_lansare_module():
                 pal = total_baxuri // P
                 C = total_baxuri % P
                 
-                # --- LOGICA FISCALA (SMARTBILL) - EXACT CUM AI CERUT ---
+                # --- LOGICA FISCALA (SMARTBILL) REPARATA EXTREM DE CLAR ---
                 if pal > 0:
-                    payload_fisc.append({"Cod_Depozit": item['Cod_Depozit_Pal'], "Nomenclator Oficial": f"{nf} (Palet Întreg)", "Cantitate (U.M.)": f"{pal * P * conv} {um}"})
+                    txt_pal = f"cutii cod {item['Cod_Depozit_Pal']} - {pal} palet(i) = {pal * P} cutii"
+                    payload_fisc.append({"Cod_Depozit": item['Cod_Depozit_Pal'], "Nomenclator Oficial": txt_pal, "Cantitate (U.M.)": f"{pal * P * conv} {um}"})
                 
                 if C > 0:
                     if C <= L:
-                        # Daca ne ajung cutiile libere de pe raft
-                        payload_fisc.append({"Cod_Depozit": item['Cod_Depozit_Box'], "Nomenclator Oficial": f"{nf} (Din cutii libere)", "Cantitate (U.M.)": f"{C * conv} {um}"})
+                        txt_liber = f"cutii cod {item['Cod_Depozit_Box']} - {C} cutii"
+                        payload_fisc.append({"Cod_Depozit": item['Cod_Depozit_Box'], "Nomenclator Oficial": txt_liber, "Cantitate (U.M.)": f"{C * conv} {um}"})
                         payload_log.append({"Cod Gestiune": item['Cod_Depozit_Box'], "Denumire": nf, "Cant": str(C), "UM": "Cutii"})
                         payload_log.append({"Cod Gestiune": "↳", "Denumire": "🍺 Sfat: Iei din stocul liber de pe raft", "Cant": "-", "UM": "-"})
                     else:
-                        # Nu ne ajung cutiile, trebuie sa spargem
                         if L > 0: 
-                            payload_fisc.append({"Cod_Depozit": item['Cod_Depozit_Box'], "Nomenclator Oficial": f"{nf} (Din cutii libere)", "Cantitate (U.M.)": f"{L * conv} {um}"})
+                            txt_liber_2 = f"cutii cod {item['Cod_Depozit_Box']} - {L} cutii"
+                            payload_fisc.append({"Cod_Depozit": item['Cod_Depozit_Box'], "Nomenclator Oficial": txt_liber_2, "Cantitate (U.M.)": f"{L * conv} {um}"})
                             payload_log.append({"Cod Gestiune": item['Cod_Depozit_Box'], "Denumire": nf, "Cant": str(L), "UM": "Cutii"})
                             payload_log.append({"Cod Gestiune": "↳", "Denumire": f"🍺 Sfat: Iei {L} cutii ramase libere", "Cant": "-", "UM": "-"})
                         
-                        # Restul le luam din Paletul Spart (Codul va fi de palet!)
-                        payload_fisc.append({"Cod_Depozit": item['Cod_Depozit_Pal'], "Nomenclator Oficial": f"{nf} (Din spargere palet)", "Cantitate (U.M.)": f"{(C - L) * conv} {um}"})
+                        txt_spart = f"cutii cod {item['Cod_Depozit_Pal']} - {C - L} cutii"
+                        payload_fisc.append({"Cod_Depozit": item['Cod_Depozit_Pal'], "Nomenclator Oficial": txt_spart, "Cantitate (U.M.)": f"{(C - L) * conv} {um}"})
                         payload_log.append({"Cod Gestiune": item['Cod_Depozit_Pal'], "Denumire": f"{nf} (Spart din palet)", "Cant": str(C - L), "UM": "Cutii"})
                         payload_log.append({"Cod Gestiune": "↳", "Denumire": "🍺 Sfat: Desfaci 1 Palet Nou pentru restul", "Cant": "-", "UM": "-"})
 
@@ -280,7 +288,7 @@ def render_lansare_module():
                         if len(st.session_state.schita_comanda) > 0:
                             st.error("Golește coșul curent din Tab-ul 1 înainte de a aduce o comandă de la Rampă!")
                         else:
-                            # REFUND STOC (Bug Fix)
+                            # REFUND STOC (Intoarcem produsele in baza de date fizic)
                             for i_item in cmd['Schita_Originala']:
                                 p_name = i_item['Produs']
                                 P_conv = st.session_state.db[p_name]['conversion']
