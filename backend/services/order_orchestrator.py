@@ -262,19 +262,25 @@ def render_lansare_module():
                     executa_lansare()
                     st.session_state.last_success_msg = f"✅ Comanda NS-{st.session_state.order_number - 1} e la Rampă! (Dă click pe Tab-ul 'Gestiune Rampă & Acte')"
                     st.rerun()
-
     with tab2:
         st.markdown("### 🚚 Gestiune Rampă (Istoric Zilei)")
         if len(st.session_state.istoric_comenzi_live) == 0: st.info("Nicio comandă la rampă.")
         
         for idx, cmd in enumerate(reversed(st.session_state.istoric_comenzi_live)):
             real_idx = len(st.session_state.istoric_comenzi_live) - 1 - idx 
-            status_color = "🔴" if cmd['Status'] == "Asteapta Incarcare" else "🟡" if cmd['Status'] == "Incarcat" else "🟢"
+            
+            # Culori pentru noul flux
+            if cmd['Status'] == "Asteapta Incarcare": status_color = "🔴"
+            elif cmd['Status'] == "Incarcat": status_color = "🟡"
+            elif cmd['Status'] == "Documente Generate": status_color = "🔵"
+            else: status_color = "🟢"
+
             st.markdown(f"#### {status_color} Cmd NEXUS-{cmd['Comanda']} | {cmd['Client']} | Status: {cmd['Status']}")
             
             with st.expander("👁️ Vezi Marfa (WMS)"):
                 st.dataframe(pd.DataFrame(cmd['Payload_Logistic']), hide_index=True)
                 
+            # PASUL 1: Asteapta Incarcarea fizica
             if cmd['Status'] == "Asteapta Incarcare":
                 col_a, col_b = st.columns(2)
                 with col_a: 
@@ -300,17 +306,31 @@ def render_lansare_module():
                             st.session_state.last_success_msg = "⚠️ Comanda a fost adusă înapoi de la rampă. Marfa a revenit în stoc. Modifică cantitățile în Tab-ul 1."
                             st.rerun()
                         
+            # PASUL 2: Dupa Incarcare -> Emite Actele Fizice (PDF)
             elif cmd['Status'] == "Incarcat":
+                st.info("Marfa a fost confirmată. Șoferul așteaptă documentele de transport (Avizul).")
                 if st.button("🖨️ EMITE ACTE PDF", type="primary", key=f"emit_{real_idx}"):
                     pdf_p = generate_pdf_document(cmd['Comanda'], cmd['Client'], cmd['Payload_Fiscal'], cmd['Payload_Logistic'])
-                    st.session_state.istoric_comenzi_live[real_idx]['Status'] = "Documente Generate"; st.session_state.istoric_comenzi_live[real_idx]['pdf_path'] = pdf_p; st.rerun()
+                    st.session_state.istoric_comenzi_live[real_idx]['Status'] = "Documente Generate"
+                    st.session_state.istoric_comenzi_live[real_idx]['pdf_path'] = pdf_p
+                    st.rerun()
                     
+            # PASUL 3: Actele au fost emise -> Acum poti trimite spre facturare in SmartBill
             elif cmd['Status'] == "Documente Generate":
                 c_d1, c_d2 = st.columns(2)
                 with c_d1:
-                    with open(cmd['pdf_path'], "rb") as file: st.download_button("📥 Descarcă Aviz PDF", data=file, file_name=f"Aviz_{cmd['Comanda']}.pdf", mime="application/pdf", key=f"dl_{real_idx}")
+                    with open(cmd['pdf_path'], "rb") as file: 
+                        st.download_button("📥 Descarcă Aviz PDF", data=file, file_name=f"Aviz_{cmd['Comanda']}.pdf", mime="application/pdf", key=f"dl_{real_idx}")
                 with c_d2:
-                    st.success("✅ Finalizat.")
+                    st.warning("⚠️ Actele s-au emis, dar comanda NU este încă facturată fiscal.")
+                    if st.button("🚀 TRIMITE LA SMARTBILL (e-Factura)", type="primary", key=f"sb_{real_idx}", use_container_width=True):
+                        st.session_state.istoric_comenzi_live[real_idx]['Status'] = "Trimis SmartBill"
+                        st.rerun()
+
+            # PASUL 4: Finalizat
+            elif cmd['Status'] == "Trimis SmartBill":
+                st.success("✅ Acte emise & Date trimise la SmartBill cu succes. Flux închis.")
+                
             st.divider()
 
     # ==========================================
@@ -327,7 +347,7 @@ def render_lansare_module():
                 istoric_df.append({
                     "Comandă": f"NEXUS-{c['Comanda']}",
                     "Client": c['Client'],
-                    "Status": "✅ Finalizat" if c['Status'] == "Documente Generate" else c['Status'],
+                    "Status": "✅ Gata" if c['Status'] == "Trimis SmartBill" else c['Status'],
                     "Articole": len(c['Schita_Originala'])
                 })
             
@@ -336,12 +356,13 @@ def render_lansare_module():
             st.divider()
             st.markdown("#### 📥 Re-Descărcare Documente (Arhivă PDF)")
             
-            comenzi_finalizate = [c for c in reversed(st.session_state.istoric_comenzi_live) if c['Status'] == "Documente Generate"]
+            # Aici afisam documentele doar dupa ce au fost generate (chiar daca nu-s inca in SmartBill)
+            comenzi_cu_acte = [c for c in reversed(st.session_state.istoric_comenzi_live) if c['Status'] in ["Documente Generate", "Trimis SmartBill"]]
             
-            if len(comenzi_finalizate) == 0:
+            if len(comenzi_cu_acte) == 0:
                 st.warning("Nu există documente PDF generate încă în sesiune.")
             else:
-                for cmd in comenzi_finalizate:
+                for cmd in comenzi_cu_acte:
                     with st.expander(f"📦 Cmd: NEXUS-{cmd['Comanda']} | {cmd['Client']}"):
                         st.markdown("**Produse Facturate (Spre SmartBill):**")
                         st.dataframe(pd.DataFrame(cmd['Payload_Fiscal'])[['Nomenclator Oficial', 'Cantitate (U.M.)']], hide_index=True)
@@ -349,3 +370,4 @@ def render_lansare_module():
                         if 'pdf_path' in cmd and os.path.exists(cmd['pdf_path']):
                             with open(cmd['pdf_path'], "rb") as file:
                                 st.download_button("📥 Descarcă Avizul PDF (Copie)", data=file, file_name=f"Aviz_COPIE_{cmd['Comanda']}.pdf", mime="application/pdf", key=f"arh_dl_{cmd['Comanda']}")
+    
