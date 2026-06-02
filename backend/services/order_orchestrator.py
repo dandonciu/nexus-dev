@@ -208,4 +208,97 @@ def render_lansare_module():
                 if C > 0:
                     if (P - C) < C and L < C:
                         if pal > 0: payload_log.append({"Cod Gestiune": item['Cod_Depozit_Pal'], "Denumire": f"{nf} (Sigilat)", "Cant": str(pal), "UM": "PAL"})
-                        payload_log.append({"Cod Gestiune
+                        payload_log.append({"Cod Gestiune": item['Cod_Depozit_Pal'], "Denumire": nf, "Cant": str(C), "UM": "Cutii"})
+                        payload_log.append({"Cod Gestiune": "↳", "Denumire": f"🍺 Sfat: Ia 1 palet intreg, da jos {P - C} cutii si lasa-le pe raft", "Cant": "-", "UM": "-"})
+                    else:
+                        if pal > 0: payload_log.append({"Cod Gestiune": item['Cod_Depozit_Pal'], "Denumire": f"{nf} (Sigilat)", "Cant": str(pal), "UM": "PAL"})
+                        if C <= L: 
+                            payload_log.append({"Cod Gestiune": item['Cod_Depozit_Box'], "Denumire": nf, "Cant": str(C), "UM": "Cutii"})
+                            payload_log.append({"Cod Gestiune": "↳", "Denumire": "🍺 Sfat: Iei din stocul liber de pe raft", "Cant": "-", "UM": "-"})
+                        else:
+                            if L > 0: 
+                                payload_log.append({"Cod Gestiune": item['Cod_Depozit_Box'], "Denumire": nf, "Cant": str(L), "UM": "Cutii"})
+                                payload_log.append({"Cod Gestiune": "↳", "Denumire": f"🍺 Sfat: Iei {L} cutii ramase libere", "Cant": "-", "UM": "-"})
+                            payload_log.append({"Cod Gestiune": item['Cod_Depozit_Box'], "Denumire": nf, "Cant": str(C - L), "UM": "Cutii"})
+                            payload_log.append({"Cod Gestiune": "↳", "Denumire": "🍺 Sfat: Desfaci 1 Palet Nou pentru restul", "Cant": "-", "UM": "-"})
+                else:
+                    if pal > 0: payload_log.append({"Cod Gestiune": item['Cod_Depozit_Pal'], "Denumire": f"{nf} (Sigilat)", "Cant": str(pal), "UM": "PAL"})
+
+                
+                payload_fisc.append({"Cod_Depozit": item['Cod_Depozit_Pal'], "Nomenclator Oficial": nf, "Cantitate (U.M.)": f"{total_baxuri * item['Conversie_Baza']} {item['UM_Baza']}"})
+                payload_fisc.append({"Cod_Depozit": item['Cod_Depozit_Pal'], "Nomenclator Oficial": nf, "Cantitate (U.M.)": f"{((pal * P) + C) * item['Conversie_Baza']} {item['UM_Baza']}"})
+
+            cp1, cp2 = st.columns(2)
+            with cp1: st.warning("🚚 Spre Stivuitorist"); st.dataframe(pd.DataFrame(payload_log)[['Cod Gestiune', 'Denumire', 'Cant', 'UM']], hide_index=True)
+            with cp2: st.success("🧾 Spre SmartBill"); st.dataframe(pd.DataFrame(payload_fisc)[['Cod_Depozit', 'Nomenclator Oficial', 'Cantitate (U.M.)']], hide_index=True)
+            
+            st.divider()
+            c_b1, c_b2, c_b3 = st.columns([1, 2, 2])
+            with c_b1:
+                if st.button("🔙 Întoarce-te"): st.session_state.mod_previzualizare = False; st.rerun()
+            
+            def executa_lansare():
+                for item in st.session_state.schita_comanda:
+                    p = item['Produs']; P = st.session_state.db[p]['conversion']; C = item['Cutii']; pal = item['Paleti']
+                    s_ramas = get_total_boxes(p) - ((pal * P) + C)
+                    st.session_state.db[p]['stock_pal'] = s_ramas // P; st.session_state.db[p]['stock_box'] = s_ramas % P
+                st.session_state.istoric_comenzi_live.append({
+                    "Comanda": st.session_state.order_number, "Client": client_ales_prev,
+                    "Schita_Originala": st.session_state.schita_comanda.copy(),
+                    "Payload_Logistic": payload_log, "Payload_Fiscal": payload_fisc, "Status": "Asteapta Incarcare"
+                })
+                st.session_state.order_number += 1
+                st.session_state.schita_comanda = []
+                st.session_state.mod_previzualizare = False
+                
+            with c_b2:
+                if st.button("🚀 Lansează și rămâi AICI", use_container_width=True):
+                    executa_lansare()
+                    st.session_state.last_success_msg = f"✅ Comanda NS-{st.session_state.order_number - 1} a fost trimisă la Rampă! Poți adăuga una nouă."
+                    st.rerun()
+            with c_b3:
+                if st.button("🚚 Lansează și mergi la RAMPĂ", type="primary", use_container_width=True):
+                    executa_lansare()
+                    st.session_state.last_success_msg = f"✅ Comanda NS-{st.session_state.order_number - 1} e la Rampă! (Dă click pe Tab-ul 'Gestiune Rampă & Acte')"
+                    st.rerun()
+
+    with tab2:
+        st.markdown("### 🚚 Gestiune Rampă (Istoric Zilei)")
+        if len(st.session_state.istoric_comenzi_live) == 0: st.info("Nicio comandă la rampă.")
+        
+        for idx, cmd in enumerate(reversed(st.session_state.istoric_comenzi_live)):
+            real_idx = len(st.session_state.istoric_comenzi_live) - 1 - idx 
+            status_color = "🔴" if cmd['Status'] == "Asteapta Incarcare" else "🟡" if cmd['Status'] == "Incarcat" else "🟢"
+            st.markdown(f"#### {status_color} Cmd NEXUS-{cmd['Comanda']} | {cmd['Client']} | Status: {cmd['Status']}")
+            
+            with st.expander("👁️ Vezi Marfa (WMS)"):
+                st.dataframe(pd.DataFrame(cmd['Payload_Logistic']), hide_index=True)
+                
+            if cmd['Status'] == "Asteapta Incarcare":
+                col_a, col_b = st.columns(2)
+                with col_a: 
+                    if st.button("✅ Stivuitorist: Confirmă Încărcare", key=f"inc_{real_idx}", type="primary"): 
+                        st.session_state.istoric_comenzi_live[real_idx]['Status'] = "Incarcat"; st.rerun()
+                with col_b:
+                    if st.button("🔙 Întoarce în Coș (Modifică)", key=f"ret_{real_idx}"):
+                        if len(st.session_state.schita_comanda) > 0:
+                            st.error("Golește coșul curent din Tab-ul 1 înainte de a aduce o comandă de la Rampă!")
+                        else:
+                            st.session_state.schita_comanda = cmd['Schita_Originala'].copy()
+                            st.session_state.client_temporar_comandat = cmd['Client']
+                            st.session_state.istoric_comenzi_live.pop(real_idx)
+                            st.session_state.last_success_msg = "⚠️ Comanda a fost adusă înapoi de la rampă. Modifică cantitățile în Tab-ul 1."
+                            st.rerun()
+                        
+            elif cmd['Status'] == "Incarcat":
+                if st.button("🖨️ EMITE ACTE PDF", type="primary", key=f"emit_{real_idx}"):
+                    pdf_p = generate_pdf_document(cmd['Comanda'], cmd['Client'], cmd['Payload_Fiscal'], cmd['Payload_Logistic'])
+                    st.session_state.istoric_comenzi_live[real_idx]['Status'] = "Documente Generate"; st.session_state.istoric_comenzi_live[real_idx]['pdf_path'] = pdf_p; st.rerun()
+                    
+            elif cmd['Status'] == "Documente Generate":
+                c_d1, c_d2 = st.columns(2)
+                with c_d1:
+                    with open(cmd['pdf_path'], "rb") as file: st.download_button("📥 Descarcă Aviz PDF", data=file, file_name=f"Aviz_{cmd['Comanda']}.pdf", mime="application/pdf", key=f"dl_{real_idx}")
+                with c_d2:
+                    st.success("✅ Finalizat.")
+            st.divider()
