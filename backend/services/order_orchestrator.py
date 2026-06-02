@@ -27,20 +27,13 @@ def get_total_boxes(prod_key):
     return (st.session_state.db[prod_key]['stock_pal'] * st.session_state.db[prod_key]['conversion']) + st.session_state.db[prod_key]['stock_box']
 
 def get_available_stock_ui(prod_key):
-    # Luăm stocul fizic real din bază
+    # Arata stocul scazut cu ce e in cos!
     total_fizic = get_total_boxes(prod_key)
-    
-    # Calculăm câte cutii sunt DEJA în coș (Schiță) pentru acest produs
     in_cart = sum([(i.get('Paleti', 0) * st.session_state.db[prod_key]['conversion']) + i.get('Cutii', 0) for i in st.session_state.schita_comanda if i.get('Produs') == prod_key])
-    
-    # Stocul DISPONIBIL PE ECRAN = Fizic - Ce e în coș
     rem = total_fizic - in_cart
-    
-    # Returnăm formatat în Paleți și Cutii
     return rem // st.session_state.db[prod_key]['conversion'], rem % st.session_state.db[prod_key]['conversion']
 
 def calculate_delta(prod_key, cmd_pal, cmd_box):
-    # Protecția matematică rămâne activă: nu te lasă să bagi în listă mai mult decât ai fizic total
     return ((cmd_pal * st.session_state.db[prod_key]['conversion']) + cmd_box + sum([(i['Paleti'] * st.session_state.db[prod_key]['conversion']) + i['Cutii'] for i in st.session_state.schita_comanda if i['Produs'] == prod_key])) <= get_total_boxes(prod_key)
 
 # ==========================================
@@ -61,7 +54,6 @@ def generate_pdf_document(order_no, client_name, payload_fiscal, payload_log):
     pdf.set_font("Arial", '', 8)
     for i, item in enumerate(payload_fiscal):
         pdf.cell(10, 5, str(i+1), 'L,T,R', 0, 'C'); pdf.cell(130, 5, clean_text(f"({item.get('Cod_Depozit', '-')}) {item['Nomenclator Oficial'][:75]}"), 'L,T,R', 0, 'L')
-        # Reparare afișare UM dacă e lipit
         um_split = item['Cantitate (U.M.)'].split(' ')
         val_c = um_split[0]
         um_c = um_split[1] if len(um_split) > 1 else ""
@@ -113,7 +105,8 @@ def render_lansare_module():
     with col_titlu: st.title("📦 NEXUS Lansare Comenzi")
     with col_cmd: st.info(f"**Nr. Cmd:** {st.session_state.order_number}\n\n**Data:** {datetime.now().strftime('%d.%m.%Y')}")
 
-    tab1, tab2 = st.tabs(["🛒 Formare Comandă", "🚚 Gestiune Rampă & Acte"])
+    # --- AM ADAUGAT TAB-UL 3 AICI ---
+    tab1, tab2, tab3 = st.tabs(["🛒 Formare Comandă", "🚚 Gestiune Rampă & Acte", "📜 Istoric & Arhivă"])
     
     with tab1:
         comenzi_asteapta_acte = [c for c in st.session_state.istoric_comenzi_live if c['Status'] == "Incarcat"]
@@ -205,7 +198,7 @@ def render_lansare_module():
             for item in st.session_state.schita_comanda:
                 nf = item['Produs']
                 P = st.session_state.db[nf]['conversion']
-                L = st.session_state.db[nf]['stock_box'] # Cutii libere pe raft
+                L = st.session_state.db[nf]['stock_box'] 
                 conv = item['Conversie_Baza']
                 um = item['UM_Baza']
                 
@@ -213,7 +206,6 @@ def render_lansare_module():
                 pal = total_baxuri // P
                 C = total_baxuri % P
                 
-                # --- LOGICA FISCALA (SMARTBILL) REPARATA EXTREM DE CLAR ---
                 if pal > 0:
                     txt_pal = f"cutii cod {item['Cod_Depozit_Pal']} - {pal} palet(i) = {pal * P} cutii"
                     payload_fisc.append({"Cod_Depozit": item['Cod_Depozit_Pal'], "Nomenclator Oficial": txt_pal, "Cantitate (U.M.)": f"{pal * P * conv} {um}"})
@@ -236,7 +228,6 @@ def render_lansare_module():
                         payload_log.append({"Cod Gestiune": item['Cod_Depozit_Pal'], "Denumire": f"{nf} (Spart din palet)", "Cant": str(C - L), "UM": "Cutii"})
                         payload_log.append({"Cod Gestiune": "↳", "Denumire": "🍺 Sfat: Desfaci 1 Palet Nou pentru restul", "Cant": "-", "UM": "-"})
 
-                # Paletii intregi la logistica
                 if pal > 0: 
                     payload_log.insert(0, {"Cod Gestiune": item['Cod_Depozit_Pal'], "Denumire": f"{nf} (Sigilat)", "Cant": str(pal), "UM": "PAL"})
 
@@ -296,7 +287,7 @@ def render_lansare_module():
                         if len(st.session_state.schita_comanda) > 0:
                             st.error("Golește coșul curent din Tab-ul 1 înainte de a aduce o comandă de la Rampă!")
                         else:
-                            # REFUND STOC (Intoarcem produsele in baza de date fizic)
+                            # REFUND STOC
                             for i_item in cmd['Schita_Originala']:
                                 p_name = i_item['Produs']
                                 P_conv = st.session_state.db[p_name]['conversion']
@@ -323,3 +314,41 @@ def render_lansare_module():
                 with c_d2:
                     st.success("✅ Finalizat.")
             st.divider()
+
+    # ==========================================
+    # --- TAB 3: ISTORIC & ARHIVA ---
+    # ==========================================
+    with tab3:
+        st.markdown("### 📜 Arhivă Comenzi Finalizate")
+        
+        if len(st.session_state.istoric_comenzi_live) == 0:
+            st.info("Nicio comandă procesată astăzi.")
+        else:
+            # Creare tabel sumar
+            istoric_df = []
+            for c in reversed(st.session_state.istoric_comenzi_live):
+                istoric_df.append({
+                    "Comandă": f"NEXUS-{c['Comanda']}",
+                    "Client": c['Client'],
+                    "Status": "✅ Finalizat" if c['Status'] == "Documente Generate" else c['Status'],
+                    "Articole": len(c['Schita_Originala'])
+                })
+            
+            st.dataframe(pd.DataFrame(istoric_df), use_container_width=True, hide_index=True)
+            
+            st.divider()
+            st.markdown("#### 📥 Re-Descărcare Documente (Arhivă PDF)")
+            
+            comenzi_finalizate = [c for c in reversed(st.session_state.istoric_comenzi_live) if c['Status'] == "Documente Generate"]
+            
+            if len(comenzi_finalizate) == 0:
+                st.warning("Nu există documente PDF generate încă în sesiune.")
+            else:
+                for cmd in comenzi_finalizate:
+                    with st.expander(f"📦 Cmd: NEXUS-{cmd['Comanda']} | {cmd['Client']}"):
+                        st.markdown("**Produse Facturate (Spre SmartBill):**")
+                        st.dataframe(pd.DataFrame(cmd['Payload_Fiscal'])[['Nomenclator Oficial', 'Cantitate (U.M.)']], hide_index=True)
+                        
+                        if 'pdf_path' in cmd and os.path.exists(cmd['pdf_path']):
+                            with open(cmd['pdf_path'], "rb") as file:
+                                st.download_button("📥 Descarcă Avizul PDF (Copie)", data=file, file_name=f"Aviz_COPIE_{cmd['Comanda']}.pdf", mime="application/pdf", key=f"arh_dl_{cmd['Comanda']}")
