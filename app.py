@@ -33,7 +33,7 @@ if not st.session_state.logged_in:
         with st.form("login_form"):
             pwd = st.text_input("Parolă Acces (angajat-no / manager)", type="password")
             if st.form_submit_button("Autentificare", use_container_width=True):
-                if pwd in ["angajat-no", "manager-no"]:
+                if pwd in ["angajat-no", "manager"]:
                     st.session_state.logged_in = True; st.session_state.role = pwd; st.rerun()
                 else: st.error("Acces Respins!")
     st.stop()
