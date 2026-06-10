@@ -73,7 +73,7 @@ with c_logo:
     st.markdown("""
         <div style="padding: 5px 15px; border: 1px solid rgba(128, 128, 128, 0.3); border-radius: 6px; display: inline-block; margin-top: 5px;">
             <h1 style="margin: 0; font-weight: 800; font-size: 1.5rem;">🌌 NEXUS ORCHESTRATOR</h1>
-            <p style="margin: 0; color: gray; font-size: 0.85rem;">Sistem Unic de Gestiune, Reconciliere și Automatizare</p>
+            <p style="margin: 0; color: gray; font-size: 0.85rem;">Platformă Integrată de Gestiune, Reconciliere și Automatizare</p>
         </div>
     """, unsafe_allow_html=True)
 
