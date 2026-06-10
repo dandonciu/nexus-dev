@@ -52,27 +52,48 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 1. Bannerul Centrat
+# CSS GLOBAL PENTRU ELIMINAREA SPAȚIILOR GOALE
+# ==========================================
 st.markdown("""
-    <div style="text-align: center; margin-bottom: 10px;">
-        <div style="display: inline-block; padding: 10px 25px; border: 1px solid rgba(128, 128, 128, 0.3); border-radius: 8px;">
-            <h1 style="margin: 0; font-weight: 800; font-size: 1.8rem;">🌌 NEXUS ORCHESTRATOR</h1>
-            <p style="margin: 0; color: gray; font-size: 0.9rem;">Sistem Unic de Gestiune, Reconciliere și Automatizare B2B</p>
+    <style>
+    /* Ridică toată pagina mai sus (taie spațiul alb default lăsat de Streamlit) */
+    .block-container {
+        padding-top: 2rem !important; 
+        padding-bottom: 1rem !important;
+    }
+    div[data-testid="stVerticalBlock"] {
+        gap: 0.5rem !important; /* Reduce spațiul dintre rânduri */
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# ==========================================
+# HEADER MENIU RAPID (COMPACTAT & CENTRAT)
+# ==========================================
+
+# 1. Bannerul Centrat (Împins sus de tot cu margin-top negativ)
+st.markdown("""
+    <div style="text-align: center; margin-top: -30px; margin-bottom: 0px;">
+        <div style="display: inline-block; padding: 5px 25px; border: 1px solid rgba(128, 128, 128, 0.3); border-radius: 8px;">
+            <h1 style="margin: 0; font-weight: 800; font-size: 1.6rem;">🌌 NEXUS ORCHESTRATOR</h1>
+            <p style="margin: 0; color: gray; font-size: 0.85rem;">Sistem Unic de Gestiune, Reconciliere și Automatizare B2B</p>
         </div>
     </div>
 """, unsafe_allow_html=True)
 
-# 2. Rândul de dedesubt (User info & Logout pe dreapta)
-c_empty, c_user, c_out = st.columns([7, 2, 1])
+# 2. Rândul de dedesubt (User info & Logout, împinse mai jos spre linie)
+c_empty, c_user, c_out = st.columns([7.5, 2, 1])
 
 with c_user: 
-    # Am păstrat culoarea pe text și alinierea la dreapta
-    st.markdown(f"<div style='text-align:right; padding-top:5px; color:grey; font-size:0.95rem;'>Logat ca: <b>{st.session_state.role.upper()}</b></div>", unsafe_allow_html=True)
+    # Am adăugat margin-top să cadă perfect cu butonul
+    st.markdown(f"<div style='text-align:right; margin-top: 5px; color:grey; font-size:0.9rem;'>Logat ca: <b>{st.session_state.role.upper()}</b></div>", unsafe_allow_html=True)
 
 with c_out:
     if st.button("🚪 Logout", use_container_width=True): 
         st.session_state.logged_in = False; st.rerun()
 
+# Tragem linia mai sus peste golul rămas
+st.markdown("<div style='margin-top: -15px;'></div>", unsafe_allow_html=True)
 st.divider()
 # ==========================================
 # ORCHESTRATORUL: LANDING PAGE (CELE 8 PLĂCI)
