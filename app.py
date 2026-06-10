@@ -52,29 +52,27 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
+# HEADER MENIU RAPID (CURAT & ECHILIBRAT)
 # ==========================================
-# HEADER MENIU RAPID (BANNER INTEGRAT)
-# ==========================================
-c_logo, c_user, c_out = st.columns([7, 2, 1])
+c_logo, c_user, c_out = st.columns([6, 2, 1])
 
 with c_logo: 
     st.markdown("""
-        <div style="background-color: #1E1E2E; padding: 12px 20px; border-radius: 8px; border: 1px solid #3b3b54; border-left: 5px solid #00ADB5;">
-            <h1 style="margin: 0; color: #ffffff; font-weight: 800; font-size: 1.8rem;">🌌 NEXUS ORCHESTRATOR</h1>
-            <p style="margin: 2px 0 0 0; color: #A6ACCD; font-size: 0.9rem;">Sistem Unic de Gestiune, Reconciliere și Automatizare B2B</p>
+        <div style="padding: 8px 15px; border: 1px solid rgba(128, 128, 128, 0.3); border-radius: 6px; display: inline-block;">
+            <h1 style="margin: 0; font-weight: 800; font-size: 1.6rem;">🌌 NEXUS ORCHESTRATOR</h1>
+            <p style="margin: 0; color: gray; font-size: 0.9rem;">Sistem Unic de Gestiune, Reconciliere și Automatizare B2B</p>
         </div>
     """, unsafe_allow_html=True)
 
 with c_user: 
-    st.markdown(f"<div style='text-align:right; padding-top:22px; color:grey; font-size:1rem;'>Logat ca: <b style='color:#00ADB5;'>{st.session_state.role.upper()}</b></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:right; padding-top:18px; color:grey; font-size:0.95rem;'>Logat ca: <b>{st.session_state.role.upper()}</b></div>", unsafe_allow_html=True)
 
 with c_out:
-    st.markdown("<div style='padding-top:15px;'></div>", unsafe_allow_html=True) # Aliniere buton cu textul
+    st.markdown("<div style='padding-top:12px;'></div>", unsafe_allow_html=True) 
     if st.button("🚪 Logout", use_container_width=True): 
         st.session_state.logged_in = False; st.rerun()
 
 st.divider()
-
 # ==========================================
 # ORCHESTRATORUL: LANDING PAGE (CELE 8 PLĂCI)
 # ==========================================
