@@ -71,7 +71,7 @@ if st.session_state.current_module == 'Home':
     # ==========================================
     st.markdown("""
         <div style="background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); 
-                    padding: 30px 20px; 
+                    padding: 20px 20px; 
                     border-radius: 12px; 
                     border: 1px solid #3b3b54; 
                     margin-bottom: 20px; 
