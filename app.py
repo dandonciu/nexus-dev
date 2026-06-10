@@ -80,7 +80,7 @@ if st.session_state.current_module == 'Home':
             <h1 style="margin: 0; color: #ffffff; font-weight: 800; font-size: 2.2rem; letter-spacing: 1px;">
                 🌌 NEXUS ORCHESTRATOR
             </h1>
-            <p style="margin: 5px 0 0 0; color: #FDFBFB; font-size: 0.8rem; font-weight:400;">
+            <p style="margin: 5px 0 0 0; color: #B4B4B5; font-size: 0.8rem; font-weight:400;">
                 Sistem Unic de Gestiune, Reconciliere și Automatizare B2B
             </p>
            
