@@ -83,23 +83,7 @@ if st.session_state.current_module == 'Home':
    # ==========================================
     # HERO BANNER - NEXUS ORCHESTRATOR
     # ==========================================
-    st.markdown("""
-        <div style="background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); 
-                    padding: 20px 20px; 
-                    border-radius: 12px; 
-                    border: 1px solid #3b3b54; 
-                    margin-bottom: 20px; 
-                    text-align: center; 
-                    box-shadow: 0 8px 20px rgba(0,0,0,0.4);">
-            <h1 style="margin: 0; color: #00ADB5; font-weight: 800; font-size: 2.2rem; letter-spacing: 1px;">
-                🌌 NEXUS ORCHESTRATOR
-            </h1>
-            <p style="margin: 5px 0 0 0; color: #A6ACCD; font-size: 0.9rem; font-weight:400;">
-                Sistem Unic de Gestiune, Reconciliere și Automatizare B2B
-            </p>
-           
-        </div>
-    """, unsafe_allow_html=True)
+
     
     st.markdown("#### ⚡ Flux Operațional") # Am păstrat subtitlul tău pentru delimitare clară
     col1, col2, col3, col4 = st.columns(4)
