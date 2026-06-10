@@ -66,7 +66,32 @@ st.divider()
 # ==========================================
 if st.session_state.current_module == 'Home':
     
-    st.markdown("#### ⚡ Flux Operațional")
+   # ==========================================
+    # HERO BANNER - NEXUS ORCHESTRATOR
+    # ==========================================
+    st.markdown("""
+        <div style="background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); 
+                    padding: 30px 20px; 
+                    border-radius: 12px; 
+                    border: 1px solid #3b3b54; 
+                    margin-bottom: 30px; 
+                    text-align: center; 
+                    box-shadow: 0 8px 20px rgba(0,0,0,0.4);">
+            <h1 style="margin: 0; color: #ffffff; font-weight: 800; font-size: 2.2rem; letter-spacing: 1px;">
+                🌌 NEXUS ORCHESTRATOR
+            </h1>
+            <p style="margin: 10px 0 0 0; color: #A6ACCD; font-size: 1.1rem; font-weight: 500;">
+                Sistem Unic de Gestiune, Reconciliere și Automatizare B2B
+            </p>
+            <div style="margin-top: 15px; display: inline-block; background: rgba(0, 255, 136, 0.1); 
+                        border: 1px solid rgba(0, 255, 136, 0.3); padding: 5px 15px; 
+                        border-radius: 20px; color: #00ff88; font-size: 0.85rem; font-weight: bold;">
+                🟢 Ecosistem Activ și Sincronizat
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("#### ⚡ Flux Operațional") # Am păstrat subtitlul tău pentru delimitare clară
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
