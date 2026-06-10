@@ -52,13 +52,27 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# HEADER MENIU RAPID
 # ==========================================
-c_logo, c_user, c_out = st.columns([8, 2, 1])
-with c_logo: st.markdown("### 🌌 NEXUS Core Orchestrator")
-with c_user: st.markdown(f"<div style='text-align:right; padding-top:10px; color:grey;'>Logat ca: <b>{st.session_state.role.upper()}</b></div>", unsafe_allow_html=True)
+# HEADER MENIU RAPID (BANNER INTEGRAT)
+# ==========================================
+c_logo, c_user, c_out = st.columns([7, 2, 1])
+
+with c_logo: 
+    st.markdown("""
+        <div style="background-color: #1E1E2E; padding: 12px 20px; border-radius: 8px; border: 1px solid #3b3b54; border-left: 5px solid #00ADB5;">
+            <h1 style="margin: 0; color: #ffffff; font-weight: 800; font-size: 1.8rem;">🌌 NEXUS ORCHESTRATOR</h1>
+            <p style="margin: 2px 0 0 0; color: #A6ACCD; font-size: 0.9rem;">Sistem Unic de Gestiune, Reconciliere și Automatizare B2B</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+with c_user: 
+    st.markdown(f"<div style='text-align:right; padding-top:22px; color:grey; font-size:1rem;'>Logat ca: <b style='color:#00ADB5;'>{st.session_state.role.upper()}</b></div>", unsafe_allow_html=True)
+
 with c_out:
-    if st.button("🚪 Logout"): st.session_state.logged_in = False; st.rerun()
+    st.markdown("<div style='padding-top:15px;'></div>", unsafe_allow_html=True) # Aliniere buton cu textul
+    if st.button("🚪 Logout", use_container_width=True): 
+        st.session_state.logged_in = False; st.rerun()
+
 st.divider()
 
 # ==========================================
