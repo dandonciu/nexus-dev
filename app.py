@@ -80,14 +80,10 @@ if st.session_state.current_module == 'Home':
             <h1 style="margin: 0; color: #ffffff; font-weight: 800; font-size: 2.2rem; letter-spacing: 1px;">
                 🌌 NEXUS ORCHESTRATOR
             </h1>
-            <p style="margin: 10px 0 0 0; color: #A6ACCD; font-size: 1.1rem; font-weight: 500;">
+            <p style="margin: 10px 0 0 0; color: #A6ACCD; font-size: 0.6rem; font-weight: 500;">
                 Sistem Unic de Gestiune, Reconciliere și Automatizare B2B
             </p>
-            <div style="margin-top: 15px; display: inline-block; background: rgba(0, 255, 136, 0.1); 
-                        border: 1px solid rgba(0, 255, 136, 0.3); padding: 5px 15px; 
-                        border-radius: 20px; color: #00ff88; font-size: 0.85rem; font-weight: bold;">
-                🟢 Ecosistem Activ și Sincronizat
-            </div>
+           
         </div>
     """, unsafe_allow_html=True)
     
